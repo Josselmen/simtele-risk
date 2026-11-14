@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_tables.html" import render_result with context %}
+{% from "_icons.html" import icon, modulo_icon %}
+{% block title %}{{ meta.nombre }} · SIMTELE-RISK{% endblock %}
+{% block content %}
+<h1><span class="h-ico">{{ modulo_icon(meta.id) }}</span>Módulo {{ meta.id }} — {{ meta.nombre }}</h1>
+<p class="lead">{{ meta.descripcion }}</p>
+<p class="model"><strong>Modelo:</strong> {{ meta.modelo }}</p>
+
+<div class="tabs">
+  {% for key, label in SCENARIOS.items() %}
+    <a class="{{ 'active' if key == scenario else '' }}" href="{{ url_for('modulo', mid=meta.id, escenario=key) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+<p class="note">{{ meta.escenarios[scenario] }}</p>
+
+{% for e in errors %}<div class="flash error">{{ e }}</div>{% endfor %}
+
+<form method="post" class="card form" action="{{ url_for('modulo', mid=meta.id) }}">
+  <input type="hidden" name="escenario" value="{{ scenario }}">
+  <div class="fields">
+    {% for f in fields %}
+    <label>
+      <span>{{ f.label }} {% if f.unit %}<em>[{{ f.unit }}]</em>{% endif %}</span>
+      <input name="{{ f.name }}" value="{{ values[f.name] }}" inputmode="decimal" autocomplete="off">
+      {% if f.type != 'text' %}<small>{% if f.min is defined %}mín {{ f.min }}{% endif %}{% if f.max is defined %} · máx {{ f.max }}{% endif %}</small>{% endif %}
+    </label>
+    {% endfor %}
+  </div>
+  <div class="actions">
+    <button class="btn" type="submit" name="accion" value="ejecutar">{{ icon('play') }} Ejecutar</button>
+    <button class="btn secondary" type="submit" name="accion" value="guardar">{{ icon('save') }} Ejecutar y guardar</button>
+    <a class="btn ghost" href="{{ url_for('modulo', mid=meta.id, escenario=scenario) }}">{{ icon('reset') }} Restablecer valores</a>
+  </div>
+</form>
+
+{% if result %}{{ render_result(result) }}{% endif %}
+{% endblock %}

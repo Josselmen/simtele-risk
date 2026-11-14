@@ -1,0 +1,35 @@
+{% macro render_tables(tables) %}
+  {% for t in tables %}
+    <h4>{{ t.title }}</h4>
+    <div class="scroll">
+    <table>
+      <thead><tr>{% for h in t.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for r in t.rows %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table>
+    </div>
+    {% if t.note %}<p class="note">{{ t.note }}</p>{% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{% macro render_result(result) %}
+  <section class="card">
+    <h3>Resultados — escenario {{ SCENARIOS[result.scenario] }}</h3>
+    {{ render_tables([result.summary]) }}
+  </section>
+  <section class="card">
+    <h3>Gráficos</h3>
+    {% for c in result.charts %}<img class="chart" alt="{{ c.title }}" src="data:image/png;base64,{{ c.png }}">{% endfor %}
+  </section>
+  <section class="card">
+    <h3>Tablas de métodos, errores e iteraciones</h3>
+    {{ render_tables(result.tables) }}
+  </section>
+  <section class="card interp">
+    <h3>Interpretación</h3>
+    <div class="two">
+      <div><h4>Conclusión numérica (sobre los métodos)</h4><p>{{ result.interpretation.numeric }}</p></div>
+      <div><h4>Conclusión del problema (sobre el fenómeno)</h4><p>{{ result.interpretation.problem }}</p></div>
+    </div>
+    <p class="note"><strong>Límites:</strong> {{ result.limits }}</p>
+  </section>
+{% endmacro %}

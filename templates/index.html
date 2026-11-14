@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_icons.html" import modulo_icon %}
+{% block content %}
+<section class="hero">
+  <h1>SIMTELE-RISK</h1>
+  <p>Simulador educativo para comparar métodos numéricos en cuatro problemas de transporte por cable, en tres escenarios: <strong>NORMAL</strong>, <strong>ESTRÉS</strong> y <strong>MAL CONDICIONADO</strong>.</p>
+</section>
+<div class="grid">
+  {% for mid, m in MODULES.items() %}
+  <a class="tile" href="{{ url_for('modulo', mid=mid) }}">
+    <div class="icon">{{ modulo_icon(mid) }}</div>
+    <h3>{{ mid }}. {{ m.META.nombre }}</h3>
+    <p>{{ m.META.descripcion }}</p>
+    <p class="meta">{{ m.META.metodos }}</p>
+  </a>
+  {% endfor %}
+</div>
+<p class="center"><a class="btn" href="{{ url_for('historial') }}">Ver historial de simulaciones</a></p>
+{% endblock %}
