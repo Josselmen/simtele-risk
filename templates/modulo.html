@@ -16,6 +16,7 @@
 
 {% for e in errors %}<div class="flash error">{{ e }}</div>{% endfor %}
 
+{% if meta.implementado %}
 <form method="post" class="card form" action="{{ url_for('modulo', mid=meta.id) }}">
   <input type="hidden" name="escenario" value="{{ scenario }}">
   <div class="fields">
@@ -29,10 +30,21 @@
   </div>
   <div class="actions">
     <button class="btn" type="submit" name="accion" value="ejecutar">{{ icon('play') }} Ejecutar</button>
-    <button class="btn secondary" type="submit" name="accion" value="guardar">{{ icon('save') }} Ejecutar y guardar</button>
     <a class="btn ghost" href="{{ url_for('modulo', mid=meta.id, escenario=scenario) }}">{{ icon('reset') }} Restablecer valores</a>
   </div>
 </form>
-
+<p class="note"><strong>Pendiente (Semana 2):</strong> {{ meta.metodos_futuros }}.</p>
 {% if result %}{{ render_result(result) }}{% endif %}
+{% else %}
+<section class="card">
+  <h3>Caso planteado — implementación numérica pendiente</h3>
+  <p><strong>Métodos asignados:</strong> {{ meta.metodos_futuros }}.</p>
+  <h4>Parámetros sintéticos del escenario {{ SCENARIOS[scenario] }}</h4>
+  <div class="scroll"><table>
+    <thead><tr><th>Parámetro</th><th>Valor</th><th>Unidad</th></tr></thead>
+    <tbody>{% for f in fields %}<tr><td>{{ f.label }}</td><td>{{ values[f.name] }}</td><td>{{ f.unit or '—' }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="note"><strong>Límites del modelo:</strong> {{ meta.limites }}</p>
+</section>
+{% endif %}
 {% endblock %}

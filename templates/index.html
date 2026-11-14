@@ -12,8 +12,16 @@
     <h3>{{ mid }}. {{ m.META.nombre }}</h3>
     <p>{{ m.META.descripcion }}</p>
     <p class="meta">{{ m.META.metodos }}</p>
+    <p class="meta"><strong>{{ 'Semana 1: implementado' if m.META.implementado else 'Semana 1: planteado' }}</strong></p>
   </a>
   {% endfor %}
 </div>
-<p class="center"><a class="btn" href="{{ url_for('historial') }}">Ver historial de simulaciones</a></p>
+<section class="card">
+  <h3>Relación entre modelos y métodos</h3>
+  <div class="scroll"><table>
+    <thead><tr>{% for h in RELACION_HEADERS %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for r in RELACION %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="note">Semana 1: teoría de errores y sistemas lineales. Raíces e interpolación (Semana 2) e integración y EDO (Semana 3) se agregan después.</p>
+</section>
 {% endblock %}

@@ -1,8 +1,9 @@
 """Modulo 2 - Deterioro mecanico y mantenimiento.
 
-Modelo: D(t) = D0 + al*t + be*t^2; se busca t* con D(t*) = Du (raices) y se
-calibran coeficientes acoplados con un sistema lineal A x = b (Jacobi,
-Gauss-Seidel, LU, gradiente conjugado).
+Modelo: D(t) = D0 + al*t + be*t^2; t* con D(t*) = Du (referencia analitica) y
+calibracion de coeficientes acoplados con un sistema lineal A x = b (Jacobi,
+Gauss-Seidel, LU, gradiente conjugado). SEMANA 1: es el caso con los tres
+escenarios ya probados; los metodos de raices quedan para la semana 2.
 """
 import math
 import time
@@ -11,14 +12,16 @@ import numpy as np
 
 import numerics as nm
 from .common import *  # noqa: F401,F403
-from .common import plt, fig_b64, fmt, table, method, iters_from_hist, iters_from_lin, iter_table, ValidationError
+from .common import plt, fig_b64, fmt, table, method, iters_from_lin, iter_table, ValidationError
 
 MODULE_ID = 2
 META = dict(
     id=2, slug="deterioro", nombre="Deterioro y mantenimiento", icono="🔧",
     descripcion="¿Cuándo alcanzaría un indicador hipotético de deterioro el umbral de inspección?",
     modelo="D(t) = D₀ + α·t + β·t²;  se resuelve D(t*) = D_u.  Calibración: A·x = b (SPD) con x* conocida.",
-    metodos="Bisección · Newton · Secante · Jacobi · Gauss-Seidel · LU · Gradiente conjugado",
+    metodos="Jacobi · Gauss-Seidel · LU · Gradiente conjugado",
+    metodos_futuros="Bisección · Newton · Secante (D(t) − D_u = 0)",
+    implementado=True,
     escenarios={
         "NORMAL": "Sistema SPD 4×4 diagonalmente dominante; deterioro nominal.",
         "ESTRES": "Mantenimiento retrasado (más desgaste, umbral menor) y sistema 20×20 con dominancia débil.",
@@ -66,22 +69,6 @@ def run(scenario, p):
             return (Du_ - D0_) / al_
         return (-al_ + math.sqrt(al_ * al_ - 4 * be_ * (D0_ - Du_))) / (2 * be_)
     ts = tstar(D0, al, be, Du)
-    f = lambda t: D0 + al * t + be * t * t - Du
-    df = lambda t: al + 2 * be * t
-    hi = 1.0
-    while f(hi) < 0 and hi < 1e6:
-        hi *= 2
-    x0 = (Du - D0) / al if al > 1e-12 else math.sqrt((Du - D0) / be)   # estimacion lineal (a la derecha de la raiz)
-    rt = {}
-    for name, call in (("Bisección", lambda: nm.bisection(f, 0, hi, tol, xref=ts)),
-                       ("Newton", lambda: nm.newton(f, df, max(x0, 1.0), tol, xref=ts)),
-                       ("Secante", lambda: nm.secant(f, max(x0, 1.0), 0.8 * max(x0, 1.0), tol, xref=ts))):
-        t0 = time.perf_counter(); r = call(); ms = 1e3 * (time.perf_counter() - t0); rt[name] = r
-        methods.append(method("Raíz D(t)=D_u · " + name, r["root"], ts, r["converged"], iters_from_hist(r["iters"]), tol, None, 200, ms))
-    tables.append(table("Tiempo hasta el umbral: D(t) − D_u = 0", ["Método", "t* aproximado [meses]", "Iteraciones", "Convergió", "Error absoluto", "|f(t*)|"],
-                        [[k, fmt(v["root"], 10), len(v["iters"]), "Sí" if v["converged"] else "No", fmt(v["iters"][-1]["err"], 3), fmt(abs(v["iters"][-1]["fx"]), 3)] for k, v in rt.items()],
-                        note=f"Referencia analítica: t* = {fmt(ts, 10)} meses. Margen respecto de la inspección programada: {fmt(ts - tplan, 4)} meses."))
-    tables.append(iter_table("Iteraciones de Newton", rt["Newton"]["iters"]))
 
     # ---- sensibilidad
     srows = []; names = {"al": "α", "be": "β", "D0": "D₀", "Du": "D_u"}; base = dict(D0=D0, al=al, be=be, Du=Du)
@@ -95,7 +82,8 @@ def run(scenario, p):
             except ValueError:
                 continue
             srows.append([names[k], f"{(fac - 1) * 100:+.0f} %", t2, t2 - ts, 100 * (t2 - ts) / ts, ((t2 - ts) / ts) / (fac - 1)])
-    tables.append(table("Sensibilidad de t* a los parámetros (±10 %)", ["Parámetro", "Variación", "t* [meses]", "Δt* [meses]", "Δt*/t* [%]", "Coef. de sensibilidad S"], srows))
+    tables.append(table("Sensibilidad de t* a los parámetros (±10 %)", ["Parámetro", "Variación", "t* [meses]", "Δt* [meses]", "Δt*/t* [%]", "Coef. de sensibilidad S"], srows,
+                        note="Referencia analítica de t*; la búsqueda numérica de t* (raíces) se implementa en la Semana 2."))
 
     # ---- sistema lineal de calibracion
     A, b, xs, desc = _system(scenario, n)
@@ -109,6 +97,7 @@ def run(scenario, p):
     maxit = 20000
     t0 = time.perf_counter(); lin["Jacobi"] = nm.jacobi(A, b, tol, maxit, xs); ms_j = 1e3 * (time.perf_counter() - t0)
     t0 = time.perf_counter(); lin["Gauss-Seidel"] = nm.gauss_seidel(A, b, tol, maxit, xs); ms_g = 1e3 * (time.perf_counter() - t0)
+    ms_c = None
     if spd:
         t0 = time.perf_counter(); lin["CG"] = nm.cg(A, b, tol, None, xs); ms_c = 1e3 * (time.perf_counter() - t0)
     t0 = time.perf_counter(); xlu = nm.lu_solve(A, b); ms_l = 1e3 * (time.perf_counter() - t0)
@@ -117,7 +106,7 @@ def run(scenario, p):
         it = r["iters"][-1]
         rows.append([name, r["n"], "Sí" if r["converged"] else f"No ({r['reason']})", fmt(it["res"], 3), fmt(it["err"], 3)])
         methods.append(method("Sistema lineal · " + name, float(it["x"][0]), float(xs[0]), r["converged"], iters_from_lin(r["iters"]), tol, None, maxit,
-                              {"Jacobi": ms_j, "Gauss-Seidel": ms_g, "CG": locals().get("ms_c")}[name]))
+                              {"Jacobi": ms_j, "Gauss-Seidel": ms_g, "CG": ms_c}[name]))
     rows.append(["LU (directo)", "—", "Sí", fmt(nm.residual(A, b, xlu), 3), fmt(nm.err_abs(xlu, xs), 3)])
     methods.append(method("Sistema lineal · LU", float(xlu[0]), float(xs[0]), True, [], None, None, None, ms_l))
     if not spd:
@@ -130,33 +119,29 @@ def run(scenario, p):
         tables.append(iter_table(f"Iteraciones de {name}", iters_from_lin(lin[name]["iters"][:60]), 6, 0))
 
     # ---- graficos
-    fig, ax = plt.subplots(1, 3, figsize=(11, 3.3))
+    fig, ax = plt.subplots(1, 2, figsize=(9, 3.3))
     t = np.linspace(0, max(1.4 * ts, tplan * 1.2), 300)
     ax[0].plot(t, D0 + al * t + be * t * t, label="D(t)"); ax[0].axhline(Du, color="r", ls="--", label="umbral D_u")
     ax[0].axvline(tplan, color="gray", ls=":", label="inspección"); ax[0].plot([ts], [Du], "ko")
-    ax[0].set(xlabel="t [meses]", ylabel="D", title="Deterioro y umbral"); ax[0].legend(fontsize=7)
-    for name, r in rt.items():
-        ax[1].semilogy([i["k"] for i in r["iters"]], [max(i["err"], 1e-17) for i in r["iters"]], "o-", ms=3, label=name)
-    ax[1].set(xlabel="iteración k", ylabel="|t_k − t*|", title="Convergencia de las raíces"); ax[1].legend(fontsize=7)
+    ax[0].set(xlabel="t [meses]", ylabel="D", title="Deterioro y umbral (referencia analítica)"); ax[0].legend(fontsize=7)
     for name, r in lin.items():
         its = r["iters"]
         if len(its) > 1:
-            ax[2].semilogy([i["k"] for i in its], [max(i["res"], 1e-18) for i in its], "-", lw=1, label=name)
-    ax[2].set(xlabel="iteración k", ylabel="‖Ax − b‖∞", title=f"Residuo ({scenario}, κ={fmt(cond, 3)})"); ax[2].legend(fontsize=7)
+            ax[1].semilogy([i["k"] for i in its], [max(i["res"], 1e-18) for i in its], "-", lw=1, label=name)
+    ax[1].set(xlabel="iteración k", ylabel="‖Ax − b‖∞", title=f"Residuo ({scenario}, κ={fmt(cond, 3)})"); ax[1].legend(fontsize=7)
     if scenario == "MAL":
-        ax[2].set_xscale("log")
-    charts = [dict(title="Deterioro, raíces y sistema lineal", png=fig_b64(fig))]
+        ax[1].set_xscale("log")
+    charts = [dict(title="Deterioro y sistema lineal", png=fig_b64(fig))]
 
     summary = table("Resultados de referencia", ["Magnitud", "Valor", "Observación"], [
-        ["Tiempo hasta el umbral t* [meses]", fmt(ts, 8), f"≈ {fmt(ts / 12, 3)} años"],
+        ["Tiempo hasta el umbral t* [meses]", fmt(ts, 8), f"≈ {fmt(ts / 12, 3)} años (solución analítica)"],
         ["Raíz descartada (negativa) [meses]", fmt((-al - math.sqrt(al * al - 4 * be * (D0 - Du))) / (2 * be), 6) if be > 1e-14 else "—", "No tiene sentido físico"],
         ["Inspección programada [meses]", fmt(tplan), ""],
         ["Margen t* − t_plan [meses]", fmt(ts - tplan, 4), "Negativo: el umbral se alcanza antes de inspeccionar"],
     ])
     its_ = {k: v["n"] for k, v in lin.items()}
     gs = lin["Gauss-Seidel"]["iters"][-1]
-    num = (f"Newton usó {len(rt['Newton']['iters'])} iteraciones, la secante {len(rt['Secante']['iters'])} y la bisección {len(rt['Bisección']['iters'])}. "
-           f"En el sistema ({desc}), κ = {fmt(cond, 3)} y ρ(T_J) = {fmt(rhoJ, 3)}: " +
+    num = (f"En el sistema ({desc}), κ = {fmt(cond, 3)} y ρ(T_J) = {fmt(rhoJ, 3)}: " +
            ", ".join(f"{k} {'diverge' if not lin[k]['converged'] and lin[k]['reason'] == 'diverge' else str(v) + ' it.'}" for k, v in its_.items()) + ". " +
            (f"Gauss-Seidel termina con residuo {fmt(gs['res'], 2)} pero error {fmt(gs['err'], 2)} (error/residuo ≈ {fmt(gs['err'] / max(gs['res'], 1e-300), 3)}). " if scenario == "MAL" else "") +
            f"Una perturbación de 1e-6 en b se amplifica {fmt(dx_rel / db_rel, 3)} veces.")

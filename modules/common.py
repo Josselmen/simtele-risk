@@ -130,14 +130,6 @@ def method(name, value, ref=None, converged=True, iters=None, tol=None, step=Non
     return m
 
 
-def iters_from_hist(hist, key="x"):
-    """Convierte el historial de numerics.roots a la estructura guardable."""
-    out = []
-    for h in hist:
-        out.append(dict(k=h["k"], x=h[key], res=abs(h.get("fx", 0.0)), err=h.get("err"), err_rel=None))
-    return out
-
-
 def iters_from_lin(hist):
     return [dict(k=h["k"], x=[float(v) for v in h["x"]], res=h["res"], err=h["err"], err_rel=None) for h in hist]
 
@@ -155,8 +147,3 @@ def iter_table(title, hist, first=8, last=2):
         rows.append([h["k"], xs, fmt(h.get("res"), 3), fmt(h.get("err"), 3)])
     return table(title, ["k", "Aproximación", "Residuo", "Error"], rows,
                  note="Se muestran las primeras y las últimas iteraciones." if n > first + last else "")
-
-
-def order_mean(hs, es):
-    o = [math.log(es[i] / es[i + 1]) / math.log(hs[i] / hs[i + 1]) for i in range(min(len(hs), len(es)) - 1) if es[i] > 0 and es[i + 1] > 0]
-    return sum(o) / len(o) if o else float("nan")
