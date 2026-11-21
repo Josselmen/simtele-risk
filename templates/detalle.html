@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_tables.html" import render_result with context %}
+{% block title %}Simulación #{{ sim.id }} · SIMTELE-RISK{% endblock %}
+{% block content %}
+<h1>Simulación #{{ sim.id }} — {{ sim.caso }}</h1>
+<p class="lead">Escenario <strong>{{ SCENARIOS[sim.scenario] }}</strong> · guardada el {{ sim.fecha }} por {{ sim.usuario }}</p>
+<div class="actions">
+  <a class="btn" href="{{ url_for('modulo', mid=sim.caso_id, escenario=sim.scenario) }}&{{ query }}">🔁 Relanzar en el formulario</a>
+  <a class="btn ghost" href="{{ url_for('historial') }}">← Historial</a>
+  <form method="post" action="{{ url_for('eliminar', sim_id=sim.id) }}" onsubmit="return confirm('¿Eliminar esta simulación?')" style="display:inline">
+    <button class="btn danger" type="submit">Eliminar</button>
+  </form>
+</div>
+
+<section class="card">
+  <h3>Parámetros guardados</h3>
+  <div class="scroll"><table><tbody>
+    {% for k, v in sim.params.items() %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="card">
+  <h3>Resultados recuperados de la base de datos</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Método</th><th>Convergió</th><th>Iteraciones guardadas</th><th>Valor</th><th>Referencia</th><th>Error absoluto</th><th>¿Coincide al recalcular?</th></tr></thead>
+    <tbody>
+    {% for s in stored %}
+      <tr><td>{{ s.ej.metodo }}</td><td>{{ 'Sí' if s.ej.convergio else 'No' }}</td><td>{{ s.ej.iteraciones|length }}</td>
+          <td>{{ s.valor if s.valor is not none else '—' }}</td><td>{{ s.ref if s.ref is not none else '—' }}</td><td>{{ s.err.get('err_abs', '—') }}</td>
+          <td>{% if s.same is none %}—{% elif s.same %}✔ Sí{% else %}✘ No{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if error %}<div class="flash error">No se pudo reconstruir la simulación: {{ error }}</div>{% endif %}
+{% if result %}{{ render_result(result) }}{% endif %}
+{% endblock %}

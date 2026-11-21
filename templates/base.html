@@ -1,4 +1,3 @@
-{% from "_icons.html" import icon %}
 <!doctype html>
 <html lang="es">
 <head>
@@ -9,9 +8,10 @@
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="{{ url_for('index') }}">{{ icon('cable') }} SIMTELE-RISK</a>
+  <a class="brand" href="{{ url_for('index') }}">🚠 SIMTELE-RISK</a>
   <nav>
     {% for mid, m in MODULES.items() %}<a href="{{ url_for('modulo', mid=mid) }}">{{ m.META.nombre }}</a>{% endfor %}
+    <a href="{{ url_for('historial') }}">Historial</a>
     <a href="{{ url_for('acerca') }}">Acerca de</a>
   </nav>
 </header>
